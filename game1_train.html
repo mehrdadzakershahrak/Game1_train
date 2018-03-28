@@ -380,7 +380,7 @@
             if (this.lastMove) {
                 const conf = confirmAction(this.lastMove.charAt(0).toUpperCase() + this.lastMove.slice(1));
                 this.plan.push({ Action: this.lastMove, explain: conf });
-                if (!conf && confirm('Do you want to change the robot\'s target?')) {
+                if (!conf && confirm('1. Do you want to CHANGE the robot\'s target?')) {
                     this.resetTarget();
                 }
             }
@@ -399,7 +399,7 @@
         }
 
         function confirmAction(action) {
-            return confirm(`Do you think the robot is doing the right thing?`);
+            return confirm(`2. Do you think the robot is doing the RIGHT thing?`);
         }
 
         function isAllVisited() {
