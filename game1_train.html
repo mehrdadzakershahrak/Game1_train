@@ -255,7 +255,6 @@
             player.tileFrom = map.start.map(px => Math.floor(px / 40.0));
             player.tileTo = map.start.map(px => Math.floor(px / 40.0));
             map.gameMap.map((tile, i) => [tile, { x: i % 8, y: Math.floor(i / 8) }]).filter(tile => tile[0] == 2).forEach((tile, i) => rooms[tile[1].x + tile[1].y * 6 - 6] = i + 1);
-            console.log(rooms);
             return map.gameMap;
         }
 
@@ -455,6 +454,7 @@
                     x: Math.floor((e.clientX - offset.left) / 40.0),
                     y: Math.floor((e.clientY - offset.top) / 40.0)
                 };
+                if (gameMap[clicked.x + clicked.y * 8] != 2) return;
                 if (player.target) {
                     player.lastClick = { x: clicked.x, y: clicked.y };
                 } else {
@@ -538,7 +538,7 @@
             let currLoc = (m => m[0] + m[1] * 6 - 6)(maps[mapId].start.map(px => Math.floor(px / 40.0)));
             let numObj = 0;
             let lastRoom = 'dummy-room';
-            const newPlan = this.plan.map(p => {
+            return this.plan.map(p => {
                 switch (p.Action) {
                     case 'left':
                         return { Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${--currLoc}` : `move rover1 loc${currLoc} loc${--currLoc}`, explain: p.explain };
@@ -553,11 +553,9 @@
                         return { Action: `visit-room rover1 room${lastRoom} loc${currLoc}`, explain: p.explain };
                     default:
                         let loc = (l => parseInt(l[0]) + parseInt(l[1]) * 6 - 6)(p.Action.split(/[()]/)[1].split(','));
-                        console.log(loc);
                         return { Action: `set-to-visit room${rooms[loc]} ${lastRoom == 'dummy-room' ? lastRoom : `room${lastRoom}`}`, explain: p.explain };
                 }
             });
-            console.log(newPlan);
         }
 
         $('.confirmationButton').click(function () {
