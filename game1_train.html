@@ -254,7 +254,8 @@
             player.position = [...map.start];
             player.tileFrom = map.start.map(px => Math.floor(px / 40.0));
             player.tileTo = map.start.map(px => Math.floor(px / 40.0));
-            map.gameMap.map((tile, i) => [tile, i]).filter(tile => tile[0] == 2).forEach((room, i) => rooms[room[1]] = i+1);
+            map.gameMap.map((tile, i) => [tile, { x: i % 8, y: Math.floor(i / 8) }]).filter(tile => tile[0] == 2).forEach((tile, i) => rooms[tile[1].x + tile[1].y * 6 - 6] = i + 1);
+            console.log(rooms);
             return map.gameMap;
         }
 
@@ -282,6 +283,7 @@
             this.moving = false;
             this.plan = [];
             this.lastMove = null;
+            this.lastClick = null;
             this.stack = [];
         }
         Character.prototype.placeAt = function (x, y) {
@@ -449,11 +451,16 @@
 
             $('#game').click(function (e) {
                 var offset = $('#game').offset();
-                player.target = {
+                let clicked = {
                     x: Math.floor((e.clientX - offset.left) / 40.0),
                     y: Math.floor((e.clientY - offset.top) / 40.0)
                 };
-                player.plan.push({ Action: `Human-Clicked (${player.target.x},${player.target.y})`, explain: true });
+                if (player.target) {
+                    player.lastClick = { x: clicked.x, y: clicked.y };
+                } else {
+                    player.plan.push({ Action: `Human-Clicked (${clicked.x},${clicked.y})`, explain: true });
+                }
+                player.target = Object.assign({}, clicked);
                 let search = BFS(player.target.x + player.target.y * 8, Math.floor(player.position[0] / 40.0) + Math.floor(player.position[1] / 40.0) * 8);
                 const path = [];
                 while (!!search && search.parent != null) {
@@ -527,34 +534,39 @@
             requestAnimationFrame(drawGame);
         }
 
-        Character.prototype.convertPlan = function() {
-            let currLoc = (m => m[0] + m[1] * 8)(maps[mapId].start.map(px => Math.floor(px / 40.0)));
+        Character.prototype.convertPlan = function () {
+            let currLoc = (m => m[0] + m[1] * 6 - 6)(maps[mapId].start.map(px => Math.floor(px / 40.0)));
             let numObj = 0;
             let lastRoom = 'dummy-room';
             const newPlan = this.plan.map(p => {
-                switch(p.Action) {
+                switch (p.Action) {
                     case 'left':
-                        return {Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${--currLoc}` : `move rover1 loc${currLoc} loc${--currLoc}`, explain: p.explain};
+                        return { Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${--currLoc}` : `move rover1 loc${currLoc} loc${--currLoc}`, explain: p.explain };
                     case 'right':
-                        return {Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${++currLoc}` : `move rover1 loc${currLoc} loc${++currLoc}`, explain: p.explain};
+                        return { Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${++currLoc}` : `move rover1 loc${currLoc} loc${++currLoc}`, explain: p.explain };
                     case 'up':
-                        return {Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${currLoc -= 8}` : `move rover1 loc${currLoc} loc${currLoc -= 8}`, explain: p.explain};
+                        return { Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${currLoc -= 6}` : `move rover1 loc${currLoc} loc${currLoc -= 6}`, explain: p.explain };
                     case 'down':
-                        return {Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${currLoc += 8}` : `move rover1 loc${currLoc} loc${currLoc += 8}`, explain: p.explain};
+                        return { Action: p.obstacle ? `remove-obstacle rover1 obstacle${++numObj} loc${currLoc} loc${currLoc += 6}` : `move rover1 loc${currLoc} loc${currLoc += 6}`, explain: p.explain };
                     case 'Room-visited':
                         lastRoom = rooms[currLoc];
-                        return {Action: `visit-room rover1 room${lastRoom} loc${currLoc} dummy-room`, explain: p.explain};
+                        return { Action: `visit-room rover1 room${lastRoom} loc${currLoc}`, explain: p.explain };
                     default:
-                        let loc = (l => parseInt(l[0]) + parseInt(l[1]) * 8)(p.Action.split(/[()]/)[1].split(','));
-                        return {Action: `set-prec room${rooms[currLoc]} ${lastRoom}`, explain: p.explain};
+                        let loc = (l => parseInt(l[0]) + parseInt(l[1]) * 6 - 6)(p.Action.split(/[()]/)[1].split(','));
+                        console.log(loc);
+                        return { Action: `set-to-visit room${rooms[loc]} ${lastRoom == 'dummy-room' ? lastRoom : `room${lastRoom}`}`, explain: p.explain };
                 }
             });
             console.log(newPlan);
         }
 
         $('.confirmationButton').click(function () {
-            player.plan.push({ Action: player.lastMove, explain: this.id == 'true', obstacle: gameMap[player.tileTo[0] + player.tileTo[1] * 8] == 3});
+            player.plan.push({ Action: player.lastMove, explain: this.id == 'true', obstacle: gameMap[player.tileTo[0] + player.tileTo[1] * 8] == 3 });
             player.lastMove = null;
+            if (player.lastClick) {
+                player.plan.push({ Action: `Human-Clicked (${player.lastClick.x},${player.lastClick.y})`, explain: true });
+                player.lastClick = null;
+            }
             $('.confirmationButton').attr('disabled', 'disabled');
         });
 
